@@ -1,20 +1,14 @@
 # SparseGenotyping
 SparseGenotyping - is a program that allows to define a consensus genotype for scaffolds based on low-coverage SNP calls by accumulating number of reads that support one or another genotype across the length a scaffold.
 
-This program was specifically written and used for a case stydy when sequencing depth at any position of reference genome is insufficient to reliably assess genotype for the position, so instead, consensus genotypes can be defined for loci of some pre-determined or ambiguous length. In the current version
-
-Low-coverage SNP calls were accumulated across the length of each scaffold in order to infer whether each individual was homozygous A. mexicanum or heterozygous A. mexicanum/A. tigrinum by summing the number of reads that could be assigned to A. mexicanum or A. tigrinum and assessing the resulting ratios (A. tigrinum reads / A. tigrinum + A. mexicanum reads) to define a consensus genotype for the scaffold. Individuals with ratios reflecting no or low representation of A. tigrinum alleles (<0.20) were scored as homozygous A. mexicanum, and individuals with ratios approximating 50% A. tigrinum alleles (0.25 - 0.75) were scored as heterozygous A. mexicanum/A. tigrinum. Individuals with intermediate frequencies or low coverage (fewer than 4 reads) were scored as missing genotypes.
-
-# SparseGenotyping
-SparseGenotyping - is a program that allows to define a consensus genotype for scaffolds based on low-coverage SNP calls by accumulating number of reads that support one or another genotype across the length a scaffold.
-
 This program was specifically written and used for the study published in []. When sequencing depth at any position of reference genome is insufficient to reliably assess genotype for the position, instead, consensus genotypes can be defined for loci of some pre-determined or ambiguous length. In the current version program attempts to compute it for every scaffold of reference assembly.
+
+In [] the program was used to infer from low-coverage SNP calls whether each of individuals (from backcrossing F1 hybrid A. mexicanum/A.tigrinum to A. mexicanum) was homozygous A. mexicanum or heterozygous A. mexicanum/A. tigrinum. It is computed by summing the number of reads that could be assigned to A. mexicanum or A. tigrinum and assessing the resulting ratios (A. tigrinum reads / A. tigrinum + A. mexicanum reads) to define a consensus genotype for the scaffold. Individuals with ratios reflecting no or low representation of A. tigrinum alleles (<0.20) were scored as homozygous A. mexicanum, and individuals with ratios approximating 50% A. tigrinum alleles (0.25 - 0.75) were scored as heterozygous A. mexicanum/A. tigrinum. Individuals with intermediate frequencies or low coverage (fewer than 4 reads) were scored as missing genotypes. whether each individual was homozygous A. mexicanum or heterozygous A. mexicanum/A. tigrinum by summing the number of reads that could be assigned to A. mexicanum or A. tigrinum and assessing the resulting ratios (A. tigrinum reads / A. tigrinum + A. mexicanum reads) to define a consensus genotype for the scaffold. Individuals with ratios reflecting no or low representation of A. tigrinum alleles (<0.20) were scored as homozygous A. mexicanum, and individuals with ratios approximating 50% A. tigrinum alleles (0.25 - 0.75) were scored as heterozygous A. mexicanum/A. tigrinum. Individuals with intermediate frequencies or low coverage (fewer than 4 reads) were scored as missing genotypes.
 
 Program is written on C++
 
 INSTALLATION:
-    download binary or
-    source code and compile with g++
+    download source code and compile with g++
     g++ SparseGenotyping.cpp -o SparseGenotyping
 
 USAGE:
