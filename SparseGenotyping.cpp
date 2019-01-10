@@ -7,6 +7,9 @@ g++ SparseGenotyping.cpp -o SparseGenotyping
 Usage details, test data and updates can be found at 
 https://github.com/timnat/SparseGenotyping
 
+Notice: 
+in the study, this program was designed for, genotypes of first two (F=2) individuals were predefined (first was A.Mexicanum, second was A.Tigranum) and used to filter vcf file to keep only SNPs that truly differentiate between A.Mexicanum and A.Tigranum. So the genotypes of interest were genotypes of only 48 individuals (excluding first two given in vcf file). TO DO task is to generalize the program for any number of samples in vcf file. In this version one have to change NInd and F according to the given vcf file and purposes of their study and recompile the program.
+
 */
 
 #include <unistd.h>
@@ -21,7 +24,7 @@ https://github.com/timnat/SparseGenotyping
 using namespace std;
 
 #define TT 1000
-#define NInd 50  //NInd is a number of individuals/samples in vcf file. Notice, that in our study genotypes of first two (F=2) individuals were not computed, as they were known and used as a control in the original study; genotypes are computed for 48 individuals. Someone have to change NInd and F according to the given vcf file and purposes of their study and recompile the program.
+#define NInd 50  //NInd is a number of individuals/samples in vcf file. 
 #define F 2
 
 //-------------------------------------------
@@ -169,7 +172,7 @@ int main(int argc, char *argv[])
 	    sumf_out<<"Contig_name\t"<<"number_of_SNPsites\t"<<"number_of_0(AM/AM)\t"<<"number_of_1(AM/AT)\t"<<"number_of_-(low_number_of_reads)\t"<<"number_of_~(out of ["<<min_r<<","<<max_r<<"])\n";
             for (i=0;i<NInd;i++)
 		{ getline(ss1,ID1, '\t'); 
-		  f_out<<ID1<<"\t";
+		  f_out<<ID1<<"_M\t"<<ID1<<"_T\t";
 		  g_out<<ID1<<"\t";
 		  r_out<<ID1<<"\t";
 		}
@@ -197,7 +200,7 @@ int main(int argc, char *argv[])
 	     g_out<< G <<"\t";  
 	     r_out<< (int(100*(ratio_AM_to_sum)))/100.0 <<"\t";  
 
-	     if(i>=2) //skip AM in column 0, and ATT in column 1
+	     if(i>=F) //skip AM in column 0, and ATT in column 1
 	      {
 	       if (G=='0') sum_AM++, Znumber++;
 	       if (G=='1') sum_AMT++, Unumber++;
@@ -247,7 +250,7 @@ int main(int argc, char *argv[])
 	       g_out<< G <<"\t";  
 	       r_out<< (int(100*(ratio_AM_to_sum)))/100.0 <<"\t"; 
 
-              if(i>=2) 
+              if(i>=F) 
 	       {
 	        if (G=='0') sum_AM++, Znumber++;
 	        if (G=='1') sum_AMT++, Unumber++;
@@ -267,10 +270,10 @@ int main(int argc, char *argv[])
 
 
 	    cout<<"Stats summary\n";
-            cout<<"Number of 0 (i.e. Mex, M(M+T)>e)="<<Znumber<<"\n";
+            cout<<"Number of 0 (i.e. Mex, M/(M+T)>e)="<<Znumber<<"\n";
             cout<<"Number of 1 (i.e. MexTig)="<<Unumber<<"\n";
             cout<<"Number of - (i.e. too few reads, min_read_number= "<< min_read_number <<" )="<<dash_number<<"\n";
-            cout<<"Number of ~ (i.e. out of scope[] and M(M+T)<e)="<<tilda_number<<"\n";
+            cout<<"Number of ~ (i.e. out of scope[] and M/(M+T)<e)="<<tilda_number<<"\n";
 
    infile.close();
    f_out.close();   g_out.close();   r_out.close(); sumf_out.close();
