@@ -59,9 +59,9 @@ USAGE:
         
         ~ - can not assign genotype, either because of too few observed reads (even after summarizing across all SNPs) or when interpretation of ratio is rather uncertain, i.e. beyond [min_ratio;max_ratio].
 
-TEST EXAMPLE:
-
-./SparseGenotyping AMex_Atigr_48indiv_test.vcf -r 4 -m 0.3 -M 0.7 -e 0.9
+EXAMPLE:
+        Download test file AMex_Atigr_48indiv_test.vcf
+        ./SparseGenotyping AMex_Atigr_48indiv_test.vcf -r 4 -m 0.3 -M 0.7 -e 0.9
 
 CITATION:
 
