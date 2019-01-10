@@ -1,19 +1,30 @@
+/*
+SparseGenotyping - is a program that allows to define a consensus genotype for scaffolds based on low-coverage SNP calls by accumulating number of reads that support one or another genotype across the length of a scaffold
+
+Compilation
+g++ SparseGenotyping.cpp -o SparseGenotyping
+
+Usage details, test data and updates can be found at 
+https://github.com/timnat/SparseGenotyping
+
+*/
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #include <fstream>
 #include <string>
 #include <string.h>
 #include <iostream>
 #include <sstream>
-#include <stdlib.h>
-
-/*
-  Changes in v3. In v1 and v2 assigned genotype 1 only if number of AT reads is 0
-  but it looks like a big portion of those "~" (out of scope) should be actually 1
-                 In v3 assign genotype 1 if ratio (M/(M+T) > e
-*/
-
-#define e 0.8  //low limit on ratio to assign homozigous genotype e must be > maxr
-
 using namespace std;
+
+#define TT 1000
+#define NInd 50  //NInd is a number of individuals/samples in vcf file. Notice, that in our study genotypes of first two (F=2) individuals were not computed, as they were known and used as a control in the original study; genotypes are computed for 48 individuals. Someone have to change NInd and F according to the given vcf file and purposes of their study and recompile the program.
+#define F 2
+
+//-------------------------------------------
 int extractAM_AT(int i, string g, int* AM, int *AT)
 {string s_genotype,s_AM, s_AT;
  //cout << "g_"<<i<<": " << g << endl;
@@ -32,24 +43,8 @@ int extractAM_AT(int i, string g, int* AM, int *AT)
  if(s_genotype=="0/0") return 1;
  else return 0;
 }
-//--------------------------------------------
-float gtype_float(int AM_rd, int AT_rd, int min_read_number,float min_r,float max_r)
-{
- int sum=0;
- sum=AM_rd+AT_rd;
- if (sum<min_read_number) return -1;
- 
- float ratio_AM_to_sum=(float)AM_rd/sum;
- if(ratio_AM_to_sum==1) return 3; 
- if(ratio_AM_to_sum>=min_r && ratio_AM_to_sum<=max_r) return 1;
-
- cout<<ratio_AM_to_sum<<"\t";
- return ratio_AM_to_sum;
-
-}
-
-//--------------------------------------------
-char gtype_char(int AM_rd, int AT_rd, int min_read_number,float min_r,float max_r, float &ratio_AM_to_sum)
+//-------------------------------------------
+char gtype_char(int AM_rd, int AT_rd, int min_read_number,float min_r,float max_r, float e, float &ratio_AM_to_sum)
 {
  int sum=0;
  ratio_AM_to_sum=-1;
@@ -67,105 +62,123 @@ char gtype_char(int AM_rd, int AT_rd, int min_read_number,float min_r,float max_
 }
 
 //-------------------------------------------- 
-int main( int argc , char** argv ) {
 
-   if(argc<5) 
-    {
-     cout<<"wrong number of arguments"; 
-     cout<<"Usage: program input_thin.vcf min_read_number min_ratio max_ratio" <<endl;
-     cout<<"Read depth Output will be in input_thin.vcf.rd";
-     cout<<"Read depth ratio Output will be in input_thin.vcf.ratios"; //NEW in v2!!!!!!!!!!
-     cout<<"Genotype Output will be in input_thin.vcf.gtv3";
-     return 0;
+int main(int argc, char *argv[])
+{
+    int opt,min_read_number;
+    float e,min_r, max_r, ratio_AM_to_sum;
+    char fname[TT]="", sss[TT], sum_out[TT]="", s_out[TT]="", gs_out[TT]="", rs_out[TT]="";
+
+   min_read_number=4;
+   min_r=0.25;
+   max_r=0.75;
+   e=0.8;
+   /* Parsing command line*/
+    while ((opt = getopt(argc, argv, "r:m:M:e:")) != -1) {
+        switch (opt) {
+        case 'r':
+	    min_read_number = atoi(optarg);
+            break;
+        case 'm':
+	    min_r = atof(optarg);
+            break;
+        case 'M':
+	    max_r = atof(optarg);
+            break;
+        case 'e':
+            e = atof(optarg);
+            break;
+        default: 
+            fprintf(stderr, "Usage: %s [-r min_read_number [4]] [-m min_ratio [0.25]] [-M max_ratio [0.75]] [-e homoz_min_ratio [0.8]] vcf_file\n",
+                    argv[0]);
+            exit(EXIT_FAILURE);
+        }
     }
+
+
+   if (optind >= argc) {
+        fprintf(stderr, "Expected vcf_file\n");
+	fprintf(stderr, "Usage: %s [-r min_read_number [4]] [-m min_ratio [0.25]] [-M max_ratio [0.75]] [-e homoz_min_ratio [0.8]] vcf_file\n",
+                    argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+   strncat(fname,argv[optind],strlen(argv[optind]));
+   printf("vcf_file: %s\nmin_read_number=%d\nmin_ratio=%.2f\nmax_ratio=%.2f\ne=%.2f\n", fname,min_read_number,min_r,max_r,e);
    
+   std::ifstream infile( fname );
+    if (!infile) {
+	fprintf(stderr, "Can't open vcf_file %s\n",fname);	
+        exit(EXIT_FAILURE);
+    }
 
-   int min_read_number, Znumber=0, Unumber=0, dash_number=0, tilda_number=0;
-   float min_r,max_r, ratio_AM_to_sum;
-   std::string line1;
+   //puts("prepear output files");
+  //-- outputs----------
+    sprintf(sss,"%d",min_read_number); strncat(fname,".r",2); strncat(fname,sss,strlen(sss));
+    sprintf(sss,"%.2f",min_r);         strncat(fname,".",1);  strncat(fname,sss,strlen(sss));
+    sprintf(sss,"%.2f",max_r);         strncat(fname,"_",1);  strncat(fname,sss,strlen(sss));
+    strncpy(sum_out,fname,strlen(fname));
+    cout<<"Output will be in files with prefix: "<< sum_out <<endl;	
 
-   char sss[1000], sum_out[1004]="", s_out[1003]="", gs_out[1003]="", rs_out[1003]="",  G;
-   
-   string Name,Name_pred="", ID1, genotype[50];
-   int i, AM[50],AT[50], linecount=0, BEGIN, sum_AM, sum_AMT, sum_low, sum_lim;
-    sprintf(sss,"%s",argv[1]);
-//cout<<"len "<<strlen(sss) <<endl;
-    cout<<"Input file: "<< sss << endl;
-    std::ifstream infile1( sss );
-    if (!infile1) {cout<<"Can't open file "<<sss<<endl; return 0;}
+    strncat(sum_out,".sum", 4);
+    std::ofstream sumf_out(sum_out);
+    //cout<<"sumf_out will be in "<< sum_out <<endl;
 
-    min_read_number=atoi(argv[2]);	
-    min_r=atof(argv[3]);
-    max_r=atof(argv[4]);
-    cout<<"parameters: min_read_number="<<min_read_number<<" min_r="<<min_r<<" max_r="<<max_r<<"\n";
+    strncpy(s_out,fname,strlen(fname));	strncat(s_out,".rd", 3);
+    std::ofstream f_out(s_out);
+    //cout<<"Read depth output will be in "<< s_out <<endl;
 
-
-//-- outputs----------
-    strncat(sss,".r",2);  strncat(sss,argv[2],strlen(argv[2]));
-    strncat(sss,".",1);    strncat(sss,argv[3],strlen(argv[3]));
-    strncat(sss,"_",1);    strncat(sss,argv[4],strlen(argv[4]));
-    //cout<<"sss "<< sss <<endl;	
-    //cout<<"Genotype output will be in "<< sum_out <<endl;	
-    strncpy(sum_out,sss,strlen(sss));	
-    //cout<<"len "<<strlen(sss) <<endl;
-    //cout<<"Genotype output will be in "<< sum_out <<endl;
-    strncat(sum_out,".sumv3", 6);
-    std::ofstream sumf_out(sum_out) ;
-    cout<<"Genotype output will be in "<< sum_out <<endl;
-
-    strncpy(s_out,sss,strlen(sss));	
-    strncat(s_out,".rdv3", 5);
-    std::ofstream f_out(s_out) ;
-    cout<<"Read depth output will be in "<< s_out <<endl;
-
-    strncpy(rs_out,sss,strlen(sss));	
-    strncat(rs_out,".ratiosv3", 9);
+    strncpy(rs_out,fname,strlen(fname));	
+    strncat(rs_out,".ratios", 7);
     std::ofstream r_out(rs_out) ;
-    cout<<"Read depth ratios output will be in "<< rs_out <<endl;
-  
-    strncpy(gs_out,sss,strlen(sss));
-    strncat(gs_out,".gtv3", 5);
+    //cout<<"Read depth ratios output will be in "<< rs_out <<endl;
+
+    strncpy(gs_out,fname,strlen(fname));
+    strncat(gs_out,".gt", 3);
     std::ofstream g_out(gs_out) ;
-    cout<<"Genotype output will be in "<< gs_out <<endl;
-    cout<<"0 - AM/AM; 1 - AM/AT; - - low count of reads; ~ ratio is out of scope \n";
- 
+    cout<<"Genotypes output will be in "<< gs_out <<endl;
+
+    //cout<<"0 - AM/AM; 1 - AM/AT; - low count of reads; ~ ratio is out of scope \n";
+    cout<<"Genotypes labeled with\n 0 - homoz;\n 1 - heteroz;\n - number of reads is too low;\n ~ read numbers ratio is out of scope\n";
 
 
-   BEGIN=0;
-   sum_AM=sum_AMT=sum_low=sum_lim=0;
-   for(i=0;i<50;i++) AM[i]=AT[i]=0;
+   /* Main code*/
+    int begin=0, sum_AM=0, sum_AMT=0, sum_low=0, sum_lim=0, linecount=0, i, AM[NInd],AT[NInd];
+    int Znumber=0, Unumber=0, dash_number=0, tilda_number=0;
+    string line, Name,Name_pred="", ID1, genotype[NInd];
+    char G;
+   
 
-   if ( infile1 ) {
-      while ( getline( infile1 , line1 ) ) {
+    for(i=0;i<NInd;i++) AM[i]=AT[i]=0;
+
+    while ( getline( infile , line ) ) {
+
  	 linecount++;
-	// f_out << linecount << ": " << line1 << '\n' ;//supposing '\n' to be line end
-
-	 stringstream ss1(line1);
-         getline(ss1,Name, '\t');	
-	 //cout << "ss1: " << Name << endl; 
+	 std::stringstream ss1(line);
+         getline(ss1,Name,'\t');	
 
 	 /* skip header lines */
-	if(BEGIN==0)
-	{
-	 if(Name=="#CHROM")
-	   {for (i=0;i<8;i++) getline(ss1,ID1, '\t'); 
+	 if(begin==0)
+	 {
+	  if(Name=="#CHROM")
+	  {
+	    for (i=0;i<8;i++) getline(ss1,ID1, '\t'); 
             f_out<<"Contig_name\t"<<"number_of_SNPsites\t";
  	    g_out<<"Contig_name\t"<<"number_of_SNPsites\t";
  	    r_out<<"Contig_name\t"<<"number_of_SNPsites\t";
-	    sumf_out<<"Contig_name\t"<<"number_of_SNPsites\t"<<"number_of_0(AM/AM)\t"<<"number_of_1(AM/AT)\t"<<"number_of_-(low_count_of_reads)\t"<<"number_of_~(out of ["<<min_r<<","<<max_r<<"])\n";
-            for (i=0;i<50;i++)
+	    sumf_out<<"Contig_name\t"<<"number_of_SNPsites\t"<<"number_of_0(AM/AM)\t"<<"number_of_1(AM/AT)\t"<<"number_of_-(low_number_of_reads)\t"<<"number_of_~(out of ["<<min_r<<","<<max_r<<"])\n";
+            for (i=0;i<NInd;i++)
 		{ getline(ss1,ID1, '\t'); 
 		  f_out<<ID1<<"\t";
 		  g_out<<ID1<<"\t";
 		  r_out<<ID1<<"\t";
-		  //sumf_out<<ID1<<"\t";
 		}
 		f_out << endl;
 		g_out << endl;
 		r_out << endl;
 		sumf_out << endl;
 
-	    BEGIN=1;
+	    begin=1;
   	    linecount=0; 
 	    continue;
 	   }
@@ -178,27 +191,25 @@ int main( int argc , char** argv ) {
 	   r_out<<Name_pred<<"\t"<<linecount-1<<"\t";
 	   sumf_out<<Name_pred<<"\t"<<linecount-1<<"\t";
 	  
-	   for(i=0;i<50;i++) 
-	    {G = gtype_char(AM[i],AT[i],min_read_number,min_r,max_r,ratio_AM_to_sum);
+	   for(i=0;i<NInd;i++) 
+	    {
+	     G = gtype_char(AM[i],AT[i],min_read_number,min_r,max_r,e,ratio_AM_to_sum);
 	     g_out<< G <<"\t";  
 	     r_out<< (int(100*(ratio_AM_to_sum)))/100.0 <<"\t";  
 
-	  //  if(i>0 && i<49)
-	  // if(i>=0 && i<48)
-	     if(i>=2) //AM in pos 0, ATT in pos 1
-	     {
-	      if (G=='0') sum_AM++, Znumber++;
-	      if (G=='1') sum_AMT++, Unumber++;
-	      if (G=='-') sum_low++, dash_number++;
-	      if (G=='~') sum_lim++, tilda_number++;
-	     }
-
-	    }
+	     if(i>=2) //skip AM in column 0, and ATT in column 1
+	      {
+	       if (G=='0') sum_AM++, Znumber++;
+	       if (G=='1') sum_AMT++, Unumber++;
+	       if (G=='-') sum_low++, dash_number++;
+	       if (G=='~') sum_lim++, tilda_number++;
+	      }
+            }
 
 	   sumf_out<<sum_AM<<"\t"<<sum_AMT<<"\t"<<sum_low<<"\t"<<sum_lim<<"\n";
 
 	   f_out<<Name_pred<<"\t"<<linecount-1<<"\t";
-           for(i=0;i<50;i++) 
+           for(i=0;i<NInd;i++) 
 	    {
 	     f_out<<AM[i]<<"\t"<<AT[i]<<"\t";
  	     AM[i]=AT[i]=0;
@@ -214,7 +225,7 @@ int main( int argc , char** argv ) {
          	//cout << "ID1: " << ID1 << endl;
          getline(ss1,ID1, '\t'); 
          	//cout << "ID1: " << ID1 << endl;
-	 for(int i=0;i<50;i++)
+	 for(int i=0;i<NInd;i++)
 	   {
             getline(ss1,genotype[i], '\t'); 
          	//cout << "genotype"<<i<<": " << genotype[i] << endl;
@@ -223,30 +234,30 @@ int main( int argc , char** argv ) {
 
 	Name_pred=Name;
      }
-	//last contig
+
+   	//process last line
 	   linecount++;
 	   g_out<<Name_pred<<"\t"<<linecount-1<<"\t";
 	   r_out<<Name_pred<<"\t"<<linecount-1<<"\t";
 	   sumf_out<<Name_pred<<"\t"<<linecount-1<<"\t";
-	   //for(i=0;i<50;i++) g_out<< gtype_char(AM[i],AT[i],min_read_number,min_r,max_r)<<" "; 
-	   for(i=0;i<50;i++) 
+
+	   for(i=0;i<NInd;i++) 
              {
-	       G = gtype_char(AM[i],AT[i],min_read_number,min_r,max_r,ratio_AM_to_sum);
+	       G = gtype_char(AM[i],AT[i],min_read_number,min_r,max_r,e,ratio_AM_to_sum);
 	       g_out<< G <<"\t";  
-	      r_out<< (int(100*(ratio_AM_to_sum)))/100.0 <<"\t"; 
+	       r_out<< (int(100*(ratio_AM_to_sum)))/100.0 <<"\t"; 
 
               if(i>=2) 
-	      // if(i>=0 && i<48)
 	       {
-	      if (G=='0') sum_AM++, Znumber++;
-	      if (G=='1') sum_AMT++, Unumber++;
-	      if (G=='-') sum_low++, dash_number++;
-	      if (G=='~') sum_lim++, tilda_number++;
+	        if (G=='0') sum_AM++, Znumber++;
+	        if (G=='1') sum_AMT++, Unumber++;
+	        if (G=='-') sum_low++, dash_number++;
+	        if (G=='~') sum_lim++, tilda_number++;
 	       }
              }
 	   f_out<<Name_pred<<"\t"<<linecount-1<<"\t";
 
-           for(i=0;i<50;i++) 
+           for(i=0;i<NInd;i++) 
 	    {
 	     f_out<<AM[i]<<"\t"<<AT[i]<<"\t";
  	     AM[i]=AT[i]=0;
@@ -254,20 +265,15 @@ int main( int argc , char** argv ) {
            f_out<<"\n";
 	   sumf_out<<sum_AM<<"\t"<<sum_AMT<<"\t"<<sum_low<<"\t"<<sum_lim<<"\n";
 
+
+	    cout<<"Stats summary\n";
             cout<<"Number of 0 (i.e. Mex, M(M+T)>e)="<<Znumber<<"\n";
             cout<<"Number of 1 (i.e. MexTig)="<<Unumber<<"\n";
-            cout<<"Number of - (i.e. too few reads)="<<dash_number<<"\n";
-            cout<<"Number of 0 (i.e. out of scope[] and M(M+T)<e)="<<tilda_number<<"\n";
+            cout<<"Number of - (i.e. too few reads, min_read_number= "<< min_read_number <<" )="<<dash_number<<"\n";
+            cout<<"Number of ~ (i.e. out of scope[] and M(M+T)<e)="<<tilda_number<<"\n";
 
-   infile1.close();
+   infile.close();
    f_out.close();   g_out.close();   r_out.close(); sumf_out.close();
-  }
- else {
-  /* could not open directory */
-  perror ("can't open files");
- }
 
-    return 0 ;
+   exit(EXIT_SUCCESS);
 }
-
-
