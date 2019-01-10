@@ -25,11 +25,11 @@ USAGE:
     
     <max_ratio> - maximum value of ratio to assign heterozygous genotype [0.75],  ratio = (number of reads of genotype1 / number of reads of genotype1 + number of reads of genotype2)
     
-    <e> - if ratio > e, assign homozygous genotype1 [0.8]. Individuals with ratio < e and out of [min_ratio,max_ratio] interval intermediate frequencies are scored as missing genotypes
+    <e> - if ratio > homoz_min_ratio, assign homozygous genotype1 [0.8]. Individuals with ratio < homoz_min_ratio and out of [min_ratio,max_ratio] interval intermediate frequencies are scored as missing genotypes
 
     Output:
     
-    <input.vcf>.rd - file with read depth in a tabulated format with columns:
+    *.rd - file with read depth in a tabulated format with columns:
     
         Scaffold_name  
         
@@ -49,13 +49,13 @@ USAGE:
         
         ...
         
-    <input.vcf>.ratios - file that contains ratios=(Number_of_reads_that_support_gt1/Number_of_reads_that_support_gt2) for each individual
+    *.ratios - file that contains ratios=(Number_of_reads_that_support_gt1/Number_of_reads_that_support_gt2) for each individual
     
-    <input.vcf>.gt - file that contains assigned genotypes
+    *.gt - file that contains assigned genotypes
     
-        0 - for homozygous genotype 1
+        0 - for homozygous genotype1
         
-        1 - for heterozygous genotype, when both allele for gt1 and allele for gt2 observed almost same number of times
+        1 - for heterozygous genotype, when reads from both alleles are observed almost same number of times
         
         ~ - can not assign genotype, either because of too few observed reads (even after summarizing across all SNPs) or when interpretation of ratio is rather uncertain, i.e. beyond [min_ratio;max_ratio].
 
