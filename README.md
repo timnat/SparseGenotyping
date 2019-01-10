@@ -14,20 +14,18 @@ INSTALLATION:
     g++ SparseGenotyping.cpp -o SparseGenotyping
 
 USAGE:
-
-    Input: should be in order
+ 
+    ./SparseGenotyping [-r min_read_number [4]] [-m min_ratio [0.25]] [-M max_ratio [0.75]] [-e homoz_min_ratio [0.8]] vcf_file
     
-    SparseGenotyping <input.vcf> <min_read_number> <min_ratio> <max_ratio> <e>
+    vcf_file - vcf file (output of GATK HaplotypeCaller) for NInd individuals [Default 50]. NInd is a predefined constant, that can be changed before compilation
     
-    input.vcf - vcf file (output of GATK HaplotypeCaller), in which first and second individual (columns) are individuals with known genotypes, and genotype have to be determined for all successive individuals [Default 50]
+    <min_read_number> - minimum number of reads to assign genotype [4]. At least min_read_number of reads, added accross all SNPs within a scaffold, is required to assign genotype
+        
+    <min_ratio> - minimum value of ratio to assign heterozygous genotype [0.25],  ratio = (number of reads of genotype1 / number of reads of genotype1 + number of reads of genotype2)
     
-    <min_read_number> - minimum number of reads to assign genotype [4]
+    <max_ratio> - maximum value of ratio to assign heterozygous genotype [0.75],  ratio = (number of reads of genotype1 / number of reads of genotype1 + number of reads of genotype2)
     
-    <min_ratio> - minimum value of ratio = (number of reads of genotype 1 / number of reads of gt1 + number of reads of genotype 2) to assign heterozygous genotype  [0.25]
-    
-    <max_ratio> - maximum value of ratio = (number of reads of genotype 1 / number of reads of gt1 + number of reads of genotype 2) to assign heterozygous genotype [0.75]
-    
-    <e> - if ratio > e, assign homozygous genotype 1 [0.8]. Individuals with intermediate frequencies or low coverage (fewer than mean_read_number reads) were scored as missing genotypes
+    <e> - if ratio > e, assign homozygous genotype1 [0.8]. Individuals with ratio < e and out of [min_ratio,max_ratio] interval intermediate frequencies are scored as missing genotypes
 
     Output:
     
@@ -61,6 +59,10 @@ USAGE:
         
         ~ - can not assign genotype, either because of too few observed reads (even after summarizing across all SNPs) or when interpretation of ratio is rather uncertain, i.e. beyond [min_ratio;max_ratio].
 
-Citation:
+TEST EXAMPLE:
+
+./SparseGenotyping AMex_Atigr_48indiv_test.vcf -r 4 -m 0.3 -M 0.7 -e 0.9
+
+CITATION:
 
 1. A Chromosome-Scale Assembly of the Enormous (32 Gb) Axolotl Genome. Jeramiah J. Smith, Nataliya Timoshevskaya, Vladimir A. Timoshevskiy, Melissa C. Keinath, Drew Hardy, S. Randal Voss. www.biorxiv.org/content/biorxiv/early/2018/07/20/373548.full.pdf
