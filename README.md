@@ -1,5 +1,5 @@
 # SparseGenotyping
-SparseGenotyping - is a program that allows to define a consensus genotype for scaffolds based on low-coverage SNP calls by accumulating number of reads that support one or another genotype across the length of a scaffold.
+The SparseGenotyping program allows to resolve a consensus genotype for scaffolds based on low-coverage SNP calls by accumulating number of reads that support one or another genotype across the length of a scaffold.
 
 This program was specifically written and used for the study presented in [1]. When sequencing depth at any position of reference genome is insufficient to reliably assess genotype for the position, instead, consensus genotypes can be defined for loci of some pre-determined or ambiguous length. In the current version program attempts to compute it for every scaffold of reference assembly.
 
